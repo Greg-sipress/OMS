@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THE ORDER BOOK : Trade Orders WebSocket</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs/lib/stomp.min.js"></script>
+</head>
+<body>
+
+<h1>Order Generator</h1>
+<button id="startButton">Start Order Generation</button>
+
+<script>
+    document.getElementById("startButton").addEventListener("click", function () {
+        fetch("http://localhost:8080/api/order-generator/begin", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            }
+        })
+            .then(response => response.text())
+            .then(data => {
+                alert(data); // Show success message
+            })
+            .catch(error => {
+                console.error("Error starting order generation:", error);
+                alert("Failed to start order generation.");
+            });
+    });
+</script>
+
+<button id="startMarketData">Start Market Data Generation</button>
+
+<script>
+    document.getElementById("startMarketData").addEventListener("click", function () {
+        fetch("http://localhost:8080/api/market/simulation/start", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            }
+        })
+            .then(response => response.text())
+            .then(data => {
+                alert(data); // Show success message
+            })
+            .catch(error => {
+                console.error("Error starting order generation:", error);
+                alert("Failed to start order generation.");
+            });
+    });
+</script>
+
+<button id="stopMarketData">Stop Market Data Generation</button>
+
+<script>
+    document.getElementById("stopMarketData").addEventListener("click", function () {
+        fetch("http://localhost:8080/api/market/simulation/stop", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            }
+        })
+            .then(response => response.text())
+            .then(data => {
+                alert(data); // Show success message
+            })
+            .catch(error => {
+                console.error("Error stopping order generation:", error);
+                alert("Failed to start order generation.");
+            });
+    });
+</script>
+
+
+<div id="stats-panel">
+    <h2>Market Statistics</h2>
+    <table>
+        <tr>
+            <td><strong>VWAP:</strong></td>
+            <td id="vwap">0.00</td>
+        </tr>
+        <tr>
+            <td><strong>TWAP:</strong></td>
+            <td id="twap">0.00</td>
+        </tr>
+        <tr>
+            <td><strong>Last Price:</strong></td>
+            <td id="lastPrice">0.00</td>
+        </tr>
+        <tr>
+            <td><strong>Volume:</strong></td>
+            <td id="volume">0.00</td>
+        </tr>
+    </table>
+</div>
+
+<style>
+    #stats-panel {
+        width: 100%;
+        border: 1px solid #ddd;
+        padding: 10px;
+        box-sizing: border-box;
+        margin-top: 20px;
+        background-color: #f9f9f9;
+    }
+
+    #stats-panel table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    #stats-panel td {
+        padding: 5px 10px;
+    }
+</style>
+<script>
+    // Mock statsItem update (replace with your actual WebSocket or fetch logic)
+    setInterval(() => {
+        const statsItem = {
+            vwap: (Math.random() * 100).toFixed(2),
+            twap: (Math.random() * 100).toFixed(2),
+            last: (Math.random() * 1000).toFixed(2),
+            volume: Math.floor(Math.random() * 10000)
+        };
+
+        // Update the stats panel with the new data
+        document.getElementById("vwap").textContent = statsItem.vwap;
+        document.getElementById("twap").textContent = statsItem.twap;
+        document.getElementById("lastPrice").textContent = statsItem.last;
+        document.getElementById("volume").textContent = statsItem.volume;
+    }, 5000); // Update every 5 seconds
+</script>
+<h1>Price Chart</h1>
+<canvas id="priceChart" width="400" height="200"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Initialize Chart.js Line Chart
+    const ctx = document.getElementById('priceChart').getContext('2d');
+    const priceData = [];
+    const labels = []; // Keeps track of time or indices for the x-axis
+
+    const priceChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Price',
+                data: priceData,
+                borderColor: 'rgba(75, 192, 192, 1)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Time'
+                    }
+                },
+                y: {
+                    beginAtZero: false,
+                    title: {
+                        display: true,
+                        text: 'Price'
+                    }
+                }
+            }
+        }
+    });
+
+</script>
+
+<h1>Trade Orders</h1>
+<style>
+    #trades-container {
+        width: 100%;
+        height: 300px;
+        overflow-y: scroll;
+        border: 1px solid #ddd;
+        padding: 10px;
+        box-sizing: border-box;
+    }
+
+    #trades-container ul {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+    }
+</style>
+
+<div id="trades-container">
+    <ul id="tradesOrders"></ul>
+
+</div>
+
+<h1>Trades</h1>
+<div id="trades-container2">
+    <ul id="trades2"></ul>
+</div>
+<style>
+    #trades-container2 {
+        width: 100%;
+        height: 300px;
+        overflow-y: scroll;
+        border: 1px solid #ddd;
+        padding: 10px;
+        box-sizing: border-box;
+        margin-top: 20px;
+    }
+
+    #trades-container2 ul {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+    }
+</style>
+
+<h1>Market Data</h1>
+<div id="marketData-container2">
+    <ul id="marketData"></ul>
+</div>
+<style>
+    #marketData-container2 {
+        width: 100%;
+        height: 300px;
+        overflow-y: scroll;
+        border: 1px solid #ddd;
+        padding: 10px;
+        box-sizing: border-box;
+        margin-top: 20px;
+    }
+
+    #marketData-container2 ul {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+    }
+</style>
+
+
+<script>
+    // Connect to the WebSocket endpoint
+    const socket = new SockJS('http://localhost:8080/ws');
+    const stompClient = Stomp.over(socket);
+
+    stompClient.connect({}, function(frame) {
+        console.log('Connected: ' + frame);
+
+// Subscribe to the "/topic/tradeOrders" destination
+        stompClient.subscribe('/topic/tradeOrders', function (message) {
+            const tradeOrder = message.body;
+            const tradeOrderList = document.getElementById('tradesOrders');
+            const tradeOrderItem = document.createElement('li');
+            tradeOrderItem.textContent = tradeOrder;
+            tradeOrderList.appendChild(tradeOrderItem);
+        });
+
+// Subscribe to the "/topic/trades" destination
+        stompClient.subscribe('/topic/trades', function (message) {
+            const trade = message.body;
+            const tradeList = document.getElementById('trades2');
+            const tradeItem = document.createElement('li');
+            tradeItem.textContent = trade;
+            tradeList.appendChild(tradeItem);
+
+
+            const tradeData = JSON.parse(trade); // Parse the JSON string into an object
+            console.log('Received trade data:', tradeData); // Debug the received trade data
+
+            const price = tradeData.price; // Access the 'price' field
+            console.log('Extracted price:', price); // Debug the extracted price
+
+// Add the new price and update labels (e.g., timestamp or index)
+            const currentTime = new Date().toLocaleTimeString();
+            console.log('Current time for label:', currentTime); // Debug label time
+            labels.push(currentTime); // Add current time as label
+
+            priceData.push(price);
+            console.log('Updated priceData array:', priceData); // Debug updated price data
+
+// Update the chart
+            console.log('Updating the price chart...');
+            priceChart.update();
+            console.log('Price chart updated successfully.');
+           // const tradeData = JSON.parse(trade); // Parse the JSON string into an object
+           // const price = tradeData.price; // Access the 'price' field
+            // Add the new price and update labels (e.g., timestamp or index)
+            labels.push(new Date().toLocaleTimeString()); // Add current time as label
+            priceData.push(price);
+            // Update the chart
+            priceChart.update();
+
+
+        });
+
+        stompClient.subscribe('/topic/marketData', function(message) {
+            const marketData = message.body;
+            const marketDataList = document.getElementById('marketData');
+            const listItem = document.createElement('li');
+            listItem.textContent = marketData;
+            marketDataList.appendChild(listItem);
+        });
+
+        stompClient.subscribe('/topic/stats', function(message) {
+            const statsItem = message.body;
+            const statsItemList = document.getElementById('statsItem');
+            const statsItemlistItem = document.createElement('li');
+            statsItemlistItem.textContent = statsItem;
+            statsItemList.appendChild(listItem);
+        });
+
+    });
+</script>
+</body>
+</html>
